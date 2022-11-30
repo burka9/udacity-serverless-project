@@ -1,17 +1,13 @@
 import { CustomAuthorizerEvent, CustomAuthorizerResult } from 'aws-lambda'
 import 'source-map-support/register'
 
-import { verify, decode } from 'jsonwebtoken'
+import { verify } from 'jsonwebtoken'
 import { createLogger } from '../../utils/logger'
-import Axios from 'axios'
-import { Jwt } from '../../auth/Jwt'
 import { JwtPayload } from '../../auth/JwtPayload'
+import request from 'request-promise';
 
 const logger = createLogger('auth')
 
-// TODO: Provide a URL that can be used to download a certificate that can be used
-// to verify JWT token signature.
-// To get this URL you need to go to an Auth0 page -> Show Advanced Settings -> Endpoints -> JSON Web Key Set
 const jwksUrl = 'https://burka.us.auth0.com/.well-known/jwks.json'
 
 export const handler = async (
@@ -55,27 +51,23 @@ export const handler = async (
 }
 
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
-  const token = getToken(authHeader)
-  const jwt: Jwt = decode(token, { complete: true }) as Jwt
+  const token = getToken(authHeader);
 
-  // TODO: Implement token verification
-  // You should implement it similarly to how it was implemented for the exercise for the lesson 5
-  // You can read more about how to do this here: https://auth0.com/blog/navigating-rs256-and-jwks/
-  const response = await Axios.get(jwksUrl)
-  const keys = response.data.keys
-  const signkeys = keys.find(key => key.kid ===jwt.header.kid)
+  const jwksRequest = await request({
+    uri: jwksUrl,
+    strictSsl: true,
+    json: true
+  }).promise();
 
-  if (!signkeys)
-    throw Error('JWKS endpoint does not contain any keys')
-  
-  const pem = signkeys.x5c[0]
-  const cert = `-----BEGIN CERTIFICATE-----\n${pem}\n-----END CERTIFICATE-----`
+  const jwks = jwksRequest.keys;
 
-  const verifiedToken = verify(token, cert, {
-    algorithms: ['RS256']
-  }) as JwtPayload
+  const signingKeys = jwks.map(key => {
+    return { kid: key.kid, nbf: key.nbf, publicKey: certToPEM(key.x5c[0]) };
+  });
+  const signingKey = signingKeys[0].publicKey;
 
-  return verifiedToken
+  return verify(token, signingKey, {algorithms: ['RS256']}) as JwtPayload;
+
 }
 
 function getToken(authHeader: string): string {
@@ -85,7 +77,13 @@ function getToken(authHeader: string): string {
     throw new Error('Invalid authentication header')
 
   const split = authHeader.split(' ')
-  const token = split[1]
+  const token = split[1];
 
   return token
+}
+
+function certToPEM(cert) {
+  cert = cert.match(/.{1,64}/g).join('\n');
+  cert = `-----BEGIN CERTIFICATE-----\n${cert}\n-----END CERTIFICATE-----\n`;
+  return cert;
 }

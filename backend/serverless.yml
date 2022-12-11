@@ -2,7 +2,7 @@
 org: burka9
 app: serverless-todo-app-burka
 service: serverless-todo-app-burka
-frameworkVersion: '3.25.1'
+frameworkVersion: '3.25.0'
 
 plugins:
   - serverless-webpack
@@ -43,18 +43,10 @@ provider:
         - Effect: Allow
           Action:
             - xray:PutTelemetryRecords
-            - xray:PutTraceSegments
           Resource: "*"
 
 
 functions:
-  hello:
-    handler: handler.hello
-    events:
-      - httpApi:
-          path: /
-          method: get
-
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
@@ -68,7 +60,7 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
-    iamRoleStatementName: ${self:provider.environment.PROJECT_NAME}-get-todo-role-${self:provider.stage}
+    iamRoleStatementsName: ${self:provider.environment.PROJECT_NAME}-get-todo-role-${self:provider.stage}
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -96,13 +88,13 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
-          reqValidationName: RequestBodyValidator
+          reqValidatorName: RequestBodyValidator
           documentation:
             summary: Create a new todo task
             description: Create a todo task
             requestModels:
               'application/json': CreateTodoRequest
-    iamRoleStatementName: ${self:provider.environment.PROJECT_NAME}-create-todo-role-${self:provider.stage}
+    iamRoleStatementsName: ${self:provider.environment.PROJECT_NAME}-create-todo-role-${self:provider.stage}
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -132,7 +124,7 @@ functions:
               'application/json': UpdateTodoRequest
     iamRoleStatementsName: ${self:provider.environment.PROJECT_NAME}-update-todo-role-${self:provider.stage}
     iamRoleStatements:
-      - Effect:
+      - Effect: Allow
         Action:
           - dynamodb:UpdateItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
@@ -150,9 +142,11 @@ functions:
       - http:
           method: delete
           path: todos/{todoId}
+          cors: true
+          authorizer: Auth
     iamRoleStatementsName: ${self:provider.environment.PROJECT_NAME}-delete-todo-role-${self:provider.stage}
     iamRoleStatements:
-      - Effect:
+      - Effect: Allow
         Action:
           - dynamodb:DeleteItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
@@ -174,11 +168,11 @@ functions:
           authorizer: Auth
     iamRoleStatementsName: ${self:provider.environment.PROJECT_NAME}-gen-s3-upload-url-role-${self:provider.stage}
     iamRoleStatements:
-      - Effect:
+      - Effect: Allow
         Action:
           - s3:*
         Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*
-      - Effect:
+      - Effect: Allow
         Action:
           - dynamodb:Query
           - dynamodb:PutItem

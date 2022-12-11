@@ -5,6 +5,7 @@ import { CreateTodoRequest } from '../requests/CreateTodoRequest'
 import { UpdateTodoRequest } from '../requests/UpdateTodoRequest'
 import { createLogger } from '../utils/logger'
 import * as uuid from 'uuid'
+import { TodoUpdate } from '../models/TodoUpdate';
 // import * as createError from 'http-errors'
 
 // TODO: Implement businessLogic
@@ -43,9 +44,9 @@ export async function updateTodo(
 	userId: string,
 	todoId: string,
 	todoUpdate: UpdateTodoRequest,
-): Promise<UpdateTodoRequest> {
+): Promise<TodoUpdate> {
 	logger.info('update todo function called')
-	return await todoAccess.updateTodoItem(todoId, userId, todoUpdate)
+	return await todoAccess.updateTodoItem(userId, todoId, todoUpdate)
 }
 
 export async function deleteTodo(
@@ -56,8 +57,8 @@ export async function deleteTodo(
 }
 
 export async function createAttachmentPresignedUrl(
-	todoId: string,
 	userId: string,
+	todoId: string,
 ): Promise<string> {
 	logger.info('create attachment url called by ', userId, todoId)
 	return attachmentUtils.getUploadUrl(todoId)

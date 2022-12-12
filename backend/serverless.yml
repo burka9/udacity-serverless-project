@@ -2,7 +2,7 @@
 org: burka9
 app: serverless-todo-app-burka
 service: serverless-todo-app-burka
-frameworkVersion: '3.25.0'
+frameworkVersion: '3.25.1'
 
 plugins:
   - serverless-webpack
